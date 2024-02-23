@@ -20,6 +20,8 @@ def get_milvus_collection(collection_name='user_input', dim=768):
                     description='embedding vectors', dim=dim),
         FieldSchema(name='story_block_id', dtype=DataType.VARCHAR, description='story block ids',
                     max_length=500, auto_id=False),
+        FieldSchema(name='user_id', dtype=DataType.VARCHAR, description='user id',
+                    max_length=500, auto_id=False),
     ]
     schema = CollectionSchema(
         fields=fields, description='retrieve embeddings of the documents')

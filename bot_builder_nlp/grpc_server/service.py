@@ -1,5 +1,8 @@
 import grpc
 
+from sentence_transformers import SentenceTransformer
+from google.protobuf import wrappers_pb2 as _wrappers_pb2
+
 from ..proto.bot_builder_nlp import bot_builder_nlp_pb2_grpc, bot_builder_nlp_pb2
 from ..proto.luna import bentoml_service_pb2_grpc, bentoml_service_pb2
 from ..milvus import get_milvus_collection
@@ -12,6 +15,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         self.luna_stub = bentoml_service_pb2_grpc.BentoServiceStub(
             channel=self.channel)
         self.milvus_collection = get_milvus_collection()
+        self.embedder = SentenceTransformer("all-mpnet-base-v2")
 
     def reshape_list(self, original_list, n: int, m: int):
         if len(original_list) != n * m:
@@ -28,16 +32,36 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         return reshaped_list
 
     def UpsertEmbedding(self, request, context):
-        luna_response: bentoml_service_pb2.Response = self.luna_stub.Call(bentoml_service_pb2.Request(
-            api_name='get_embeddings',
-            series=bentoml_service_pb2.Series(string_values=[user_input.content for user_input in request.user_inputs])))
-        embeddings = self.reshape_list(
-            luna_response.ndarray.float_values, luna_response.ndarray.shape[0], luna_response.ndarray.shape[1])
+        embeddings = []
+        intent: bentoml_service_pb2.Response = self.luna_stub.Call(bentoml_service_pb2.Request(
+            api_name='classify',
+            text=_wrappers_pb2.StringValue(value=request.user_inputs[0].content)))
+
+        if intent.text.value == 'chitchat':
+            embeddings = self.embedder.encode(
+                [user_input.content for user_input in request.user_inputs])
+            embeddings = [x.tolist() for x in embeddings]
+        else:
+            if len(request.user_inputs) == 1:
+                string_values = [request.user_inputs[0].content, '']
+            else:
+                string_values = [
+                    user_input.content for user_input in request.user_inputs]
+
+            luna_embedding: bentoml_service_pb2.Response = self.luna_stub.Call(bentoml_service_pb2.Request(
+                api_name='get_embeddings',
+                series=bentoml_service_pb2.Series(string_values=string_values)))
+
+            embeddings = self.reshape_list(
+                luna_embedding.ndarray.float_values, luna_embedding.ndarray.shape[0], luna_embedding.ndarray.shape[1])
+
         ids = [user_input.id for user_input in request.user_inputs]
         story_block_ids = [
             user_input.story_block_id for user_input in request.user_inputs]
+        user_ids = [request.user_id] * len(ids)
 
-        self.milvus_collection.upsert([ids, embeddings, story_block_ids])
+        self.milvus_collection.upsert(
+            [ids, embeddings, story_block_ids, user_ids])
         self.milvus_collection.flush()
 
         return bot_builder_nlp_pb2.UpsertEmbeddingResponse(success=True)
@@ -49,14 +73,25 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         return bot_builder_nlp_pb2.DeleteEmbeddingResponse(success=True)
 
     def GetStoryBlockId(self, request, context):
-        luna_response: bentoml_service_pb2.Response = self.luna_stub.Call(bentoml_service_pb2.Request(
-            api_name='get_embeddings',
-            series=bentoml_service_pb2.Series(string_values=[request.user_input, ''])))
+        intent: bentoml_service_pb2.Response = self.luna_stub.Call(bentoml_service_pb2.Request(
+            api_name='classify',
+            text=_wrappers_pb2.StringValue(value=request.user_input)))
+
+        if intent.text.value == 'chitchat':
+            embeddings = self.embedder.encode([request.user_input])
+            embeddings = [x.tolist() for x in embeddings]
+        else:
+            luna_embedding: bentoml_service_pb2.Response = self.luna_stub.Call(bentoml_service_pb2.Request(
+                api_name='get_embeddings',
+                series=bentoml_service_pb2.Series(string_values=[request.user_input, ''])))
+            embeddings = [list(luna_embedding.ndarray.float_values)]
+
         search_result = self.milvus_collection.search(
-            data=[list(luna_response.ndarray.float_values)],
+            data=embeddings,
             anns_field="embedding",
             limit=1,
             output_fields=['story_block_id'],
+            expr=f"user_id == '{request.user_id}'",
             param={"metric_type": "COSINE", "offset": 0, },
         )
         story_block_id = ''

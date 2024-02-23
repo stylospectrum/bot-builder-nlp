@@ -12,7 +12,7 @@ def serve_grpc():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     bot_builder_nlp_pb2_grpc.add_BotBuilderNlpServiceServicer_to_server(
         BotBuilderNlpServicer(), server)
-    server.add_insecure_port(f"[::]:{settings.GRPC_PORT}")
+    server.add_insecure_port(f"[::]:{settings.PORT}")
     server.start()
 
     logging.basicConfig(level=logging.INFO)
