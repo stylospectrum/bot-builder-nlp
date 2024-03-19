@@ -1,4 +1,4 @@
-from .milvus import connect_to_milvus
+from .utils.milvus import connect_to_milvus
 from .grpc_server.module import serve_grpc
 
 
@@ -7,5 +7,5 @@ def main():
     serve_grpc()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

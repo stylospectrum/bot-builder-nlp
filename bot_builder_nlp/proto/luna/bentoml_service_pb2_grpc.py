@@ -6,8 +6,7 @@ from . import bentoml_service_pb2 as bentoml__service__pb2
 
 
 class BentoServiceStub(object):
-    """a gRPC BentoServer.
-    """
+    """a gRPC BentoServer."""
 
     def __init__(self, channel):
         """Constructor.
@@ -16,89 +15,110 @@ class BentoServiceStub(object):
             channel: A grpc.Channel.
         """
         self.Call = channel.unary_unary(
-                '/bentoml.grpc.v1.BentoService/Call',
-                request_serializer=bentoml__service__pb2.Request.SerializeToString,
-                response_deserializer=bentoml__service__pb2.Response.FromString,
-                )
+            "/bentoml.grpc.v1.BentoService/Call",
+            request_serializer=bentoml__service__pb2.Request.SerializeToString,
+            response_deserializer=bentoml__service__pb2.Response.FromString,
+        )
         self.ServiceMetadata = channel.unary_unary(
-                '/bentoml.grpc.v1.BentoService/ServiceMetadata',
-                request_serializer=bentoml__service__pb2.ServiceMetadataRequest.SerializeToString,
-                response_deserializer=bentoml__service__pb2.ServiceMetadataResponse.FromString,
-                )
+            "/bentoml.grpc.v1.BentoService/ServiceMetadata",
+            request_serializer=bentoml__service__pb2.ServiceMetadataRequest.SerializeToString,
+            response_deserializer=bentoml__service__pb2.ServiceMetadataResponse.FromString,
+        )
 
 
 class BentoServiceServicer(object):
-    """a gRPC BentoServer.
-    """
+    """a gRPC BentoServer."""
 
     def Call(self, request, context):
-        """Call handles methodcaller of given API entrypoint.
-        """
+        """Call handles methodcaller of given API entrypoint."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
     def ServiceMetadata(self, request, context):
-        """ServiceMetadata returns metadata of bentoml.Service.
-        """
+        """ServiceMetadata returns metadata of bentoml.Service."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
 
 
 def add_BentoServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Call': grpc.unary_unary_rpc_method_handler(
-                    servicer.Call,
-                    request_deserializer=bentoml__service__pb2.Request.FromString,
-                    response_serializer=bentoml__service__pb2.Response.SerializeToString,
-            ),
-            'ServiceMetadata': grpc.unary_unary_rpc_method_handler(
-                    servicer.ServiceMetadata,
-                    request_deserializer=bentoml__service__pb2.ServiceMetadataRequest.FromString,
-                    response_serializer=bentoml__service__pb2.ServiceMetadataResponse.SerializeToString,
-            ),
+        "Call": grpc.unary_unary_rpc_method_handler(
+            servicer.Call,
+            request_deserializer=bentoml__service__pb2.Request.FromString,
+            response_serializer=bentoml__service__pb2.Response.SerializeToString,
+        ),
+        "ServiceMetadata": grpc.unary_unary_rpc_method_handler(
+            servicer.ServiceMetadata,
+            request_deserializer=bentoml__service__pb2.ServiceMetadataRequest.FromString,
+            response_serializer=bentoml__service__pb2.ServiceMetadataResponse.SerializeToString,
+        ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'bentoml.grpc.v1.BentoService', rpc_method_handlers)
+        "bentoml.grpc.v1.BentoService", rpc_method_handlers
+    )
     server.add_generic_rpc_handlers((generic_handler,))
 
 
- # This class is part of an EXPERIMENTAL API.
+# This class is part of an EXPERIMENTAL API.
 class BentoService(object):
-    """a gRPC BentoServer.
-    """
+    """a gRPC BentoServer."""
 
     @staticmethod
-    def Call(request,
+    def Call(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/bentoml.grpc.v1.BentoService/Call',
+            "/bentoml.grpc.v1.BentoService/Call",
             bentoml__service__pb2.Request.SerializeToString,
             bentoml__service__pb2.Response.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
 
     @staticmethod
-    def ServiceMetadata(request,
+    def ServiceMetadata(
+        request,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.unary_unary(
+            request,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/bentoml.grpc.v1.BentoService/ServiceMetadata',
+            "/bentoml.grpc.v1.BentoService/ServiceMetadata",
             bentoml__service__pb2.ServiceMetadataRequest.SerializeToString,
             bentoml__service__pb2.ServiceMetadataResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )

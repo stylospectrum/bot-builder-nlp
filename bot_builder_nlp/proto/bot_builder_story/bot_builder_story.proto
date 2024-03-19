@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package bot_builder_story.service;
+
+service BotBuilderStoryService {
+  rpc GetStoryBlocks(GetStoryBlocksRequest) returns (StoryBlock);
+  rpc GetBotResponses(GetBotResponsesRequest) returns (GetBotResponsesResponse);
+  rpc GetFilters(GetFiltersRequest) returns (GetFiltersResponse);
+}
+
+message GetFiltersRequest {
+  repeated string story_block_ids = 1;
+}
+
+message GetFiltersResponse {
+  repeated Filter filters = 1;
+}
+
+message Filter {
+  string id = 1;
+  string attribute = 2;
+  string operator = 3;
+  string value = 4;
+  string parent_id = 5;
+  string story_block_id = 6;
+  repeated Filter sub_exprs = 7;
+}
+
+message GetStoryBlocksRequest {
+  string user_id = 1;
+}
+
+message StoryBlock {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string user_id = 4;
+  string parent_id = 5;
+  repeated StoryBlock children = 6;
+}
+
+message GetBotResponsesRequest {
+  string story_block_id = 1;
+}
+
+message GetBotResponsesResponse {
+  repeated BotResponse responses = 1;
+}
+
+message BotResponseButton {
+  string content = 1;
+  string go_to = 2;
+}
+
+message BotResponseGalleryItem {
+  string img_url = 1;
+  string title = 2;
+  string description = 3;
+  repeated BotResponseButton buttons = 4;
+}
+
+message BotResponse {
+  string type = 1;
+  repeated string variants = 2;
+  string img_url = 3;
+  repeated BotResponseButton buttons = 4;
+  repeated BotResponseGalleryItem gallery = 5;
+}

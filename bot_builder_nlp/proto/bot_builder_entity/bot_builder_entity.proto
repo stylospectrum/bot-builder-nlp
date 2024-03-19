@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package bot_builder_entity.service;
+
+service BotBuilderStoryService {
+  rpc GetEntities(GetEntitiesRequest) returns (GetEntitiesResponse);
+}
+
+message GetEntitiesRequest {
+  string user_id = 1;
+}
+
+message GetEntitiesResponse {
+  repeated Entity entities = 1;
+}
+
+message Entity {
+  string id = 1;
+  string name = 2;
+  repeated Option options = 3;
+}
+
+message Option {
+  string name = 1;
+  repeated Synonym synonyms = 2;
+}
+
+message Synonym {
+  string name = 1;
+}
