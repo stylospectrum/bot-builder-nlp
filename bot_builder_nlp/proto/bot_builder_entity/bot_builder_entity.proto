@@ -3,21 +3,27 @@ syntax = "proto3";
 package bot_builder_entity.service;
 
 service BotBuilderStoryService {
-  rpc GetEntities(GetEntitiesRequest) returns (GetEntitiesResponse);
+  rpc GetVariables(GetVariablesRequest) returns (GetVariablesResponse);
 }
 
-message GetEntitiesRequest {
+message GetVariablesRequest {
   string user_id = 1;
 }
 
-message GetEntitiesResponse {
-  repeated Entity entities = 1;
+message GetVariablesResponse {
+  repeated Variable variables = 1;
+}
+
+message Variable {
+  string id = 1;
+  string name = 2;
+  bool is_system = 3;
+  Entity entity = 4;
 }
 
 message Entity {
-  string id = 1;
-  string name = 2;
-  repeated Option options = 3;
+  string name = 1;
+  repeated Option options = 2;
 }
 
 message Option {

@@ -1,9 +1,9 @@
+import random
 import grpc
 import redis
 import json
 
 from sentence_transformers import SentenceTransformer
-from google.protobuf import wrappers_pb2 as _wrappers_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf import struct_pb2 as _struct_pb2
 
@@ -17,6 +17,9 @@ from ..proto.bot_builder_entity import (
 from ..utils.get_slots import get_slots
 from ..utils.evaluate_expression import evaluate_expression
 from ..utils.milvus import get_milvus_collection
+from ..utils.reshape_list import reshape_list
+from ..utils.get_json_list import get_json_list
+from ..utils.find_block_by_id import find_block_by_id
 from ..config.settings import settings
 
 
@@ -52,21 +55,6 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         self.redis = redis.Redis(
             host="localhost", port=redis_port, decode_responses=True
         )
-
-    def reshape_list(self, original_list, n: int, m: int):
-        if len(original_list) != n * m:
-            raise ValueError(
-                "The new size does not match the number of elements in the list."
-            )
-
-        reshaped_list: list[float] = []
-        for i in range(n):
-            row = []
-            for j in range(m):
-                row.append(original_list[i * m + j])
-            reshaped_list.append(row)
-
-        return reshaped_list
 
     def get_user_input_block_id(self, user_input: str, user_id: str) -> str:
         intent_response: bentoml_service_pb2.Response = self.luna_stub.Call(
@@ -192,7 +180,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                 )
             )
 
-            embeddings = self.reshape_list(
+            embeddings = reshape_list(
                 luna_embedding.ndarray.float_values,
                 luna_embedding.ndarray.shape[0],
                 luna_embedding.ndarray.shape[1],
@@ -216,39 +204,45 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         return bot_builder_nlp_pb2.DeleteEmbeddingResponse(success=True)
 
     def GetBotResponses(self, request, context):
-        result = []
+        next_bot_response_block = None
+        current_bot_response_block = None
+        user_input_block = None
         user_input_block_id = self.get_user_input_block_id(
             request.user_input, request.user_id
         )
-        current_bot_response_block = self.redis.hget(
-            f"bot_story_nlp:{request.user_id}",
-            "current_bot_response_block",
+
+        variables_response: bot_builder_entity_pb2.GetVariablesResponse = (
+            self.bot_builder_entity_stub.GetVariables(
+                bot_builder_entity_pb2.GetVariablesRequest(user_id=request.user_id)
+            )
         )
-        current_bot_response_block = json.loads(current_bot_response_block)
-        user_input_block = next(
-            (
-                block
-                for block in current_bot_response_block.get("children", [])
-                if block.get("id") == user_input_block_id
-            ),
-            None,
-        )
-        bot_response_block = None
+        variables = get_json_list(variables_response.variables)
+
+        if request.is_button_click:
+            bot_story = self.redis.hget(
+                f"bot_story_nlp:{request.user_id}",
+                "bot_story",
+            )
+            bot_story = json.loads(json.loads(bot_story))
+            user_input_block = find_block_by_id(bot_story, user_input_block_id)
+        else:
+            current_bot_response_block = self.redis.hget(
+                f"bot_story_nlp:{request.user_id}",
+                "current_bot_response_block",
+            )
+            current_bot_response_block = json.loads(current_bot_response_block)
+            user_input_block = next(
+                (
+                    block
+                    for block in current_bot_response_block.get("children", [])
+                    if block.get("id") == user_input_block_id
+                ),
+                None,
+            )
 
         if user_input_block:
             if user_input_block.get("children")[0]["type"] == "Filter":
-                entities_response: bot_builder_entity_pb2.GetEntitiesResponse = (
-                    self.bot_builder_entity_stub.GetEntities(
-                        bot_builder_entity_pb2.GetEntitiesRequest(
-                            user_id=request.user_id
-                        )
-                    )
-                )
-                entities: list[bot_builder_entity_pb2.Entity] = [
-                    json.loads(MessageToJson(entity, preserving_proto_field_name=True))
-                    for entity in entities_response.entities
-                ]
-                slots = get_slots(request.user_input, entities)
+                slots = get_slots(request.user_input, variables)
                 luna_slots = self.luna_stub.Call(
                     bentoml_service_pb2.Request(
                         api_name="classify",
@@ -290,13 +284,15 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                 ]
 
                 for filter in filters:
-                    if evaluate_expression(filter, slots, entities):
+                    if evaluate_expression(filter, slots, variables):
                         for filter_block in user_input_block.get("children"):
                             if filter_block.get("id") == filter.get("story_block_id"):
-                                bot_response_block = filter_block.get("children")[0]
+                                next_bot_response_block = filter_block.get("children")[
+                                    0
+                                ]
                         break
 
-                if bot_response_block is None:
+                if next_bot_response_block is None:
                     fallback_block = next(
                         (
                             block
@@ -307,23 +303,23 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                     )
 
                     if fallback_block:
-                        bot_response_block = fallback_block.get("children")[0]
+                        next_bot_response_block = fallback_block.get("children")[0]
                 else:
                     self.redis.hset(
                         f"bot_story_nlp:{request.user_id}",
                         "current_bot_response_block",
-                        json.dumps(bot_response_block),
+                        json.dumps(next_bot_response_block),
                     )
 
             elif user_input_block.get("children")[0]["type"] == "BotResponse":
-                bot_response_block = user_input_block.get("children")[0]
+                next_bot_response_block = user_input_block.get("children")[0]
                 self.redis.hset(
                     f"bot_story_nlp:{request.user_id}",
                     "current_bot_response_block",
-                    json.dumps(bot_response_block),
+                    json.dumps(next_bot_response_block),
                 )
 
-        if user_input_block is None or bot_response_block is None:
+        if user_input_block is None or next_bot_response_block is None:
             bot_story = self.redis.hget(
                 f"bot_story_nlp:{request.user_id}",
                 "bot_story",
@@ -331,7 +327,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
             bot_story = json.loads(json.loads(bot_story))
             welcome_msg_block = bot_story.get("children")[0]
             default_fallback_block = bot_story.get("children")[1]
-            bot_response_block = default_fallback_block.get("children")[0]
+            next_bot_response_block = default_fallback_block.get("children")[0]
 
             self.redis.hset(
                 f"bot_story_nlp:{request.user_id}",
@@ -339,22 +335,76 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                 json.dumps(welcome_msg_block),
             )
 
-        bot_responses: bot_builder_story_pb2.GetBotResponsesResponse = (
+        bot_responses_response: bot_builder_story_pb2.GetBotResponsesResponse = (
             self.bot_builder_story_stub.GetBotResponses(
                 bot_builder_story_pb2.GetBotResponsesRequest(
-                    story_block_id=bot_response_block.get("id")
+                    story_block_id=next_bot_response_block.get("id")
                 )
             )
         )
-        result = json.loads(
-            MessageToJson(
-                bot_responses,
-                preserving_proto_field_name=True,
-            )
-        )
-        result = result.get("responses")
+
+        bot_responses = get_json_list(bot_responses_response.responses)
+        result = []
+
+        for response in bot_responses:
+            if response["type"] == "Text" or response["type"] == "RandomText":
+                variants = []
+                for variant in response["variants"]:
+                    text = variant
+                    for variable in variables:
+                        if (
+                            variable.get("is_system", False)
+                            or len(variable.get("entity", {})) > 0
+                        ):
+                            continue
+                        
+                        if variable["name"] in text:
+                            expr_value = self.redis.hget(
+                                f"bot_story_nlp:{request.user_id}",
+                                variable["name"],
+                            )
+                            text = text.replace(f"${variable['name']}", expr_value)
+                    variants.append(text)
+                response["variants"] = variants
+            result.append(response)
 
         return bot_builder_nlp_pb2.LoadBotStoryResponse(responses=result)
+
+    def GetUserInput(self, request, context):
+        user_inputs_response: bot_builder_story_pb2.GetUserInputsResponse = (
+            self.bot_builder_story_stub.GetUserInputs(
+                bot_builder_story_pb2.GetUserInputsRequest(
+                    story_block_id=request.story_block_id
+                )
+            )
+        )
+
+        variables_response: bot_builder_entity_pb2.GetVariablesResponse = (
+            self.bot_builder_entity_stub.GetVariables(
+                bot_builder_entity_pb2.GetVariablesRequest(user_id=request.user_id)
+            )
+        )
+
+        user_inputs = get_json_list(user_inputs_response.inputs)
+        variables = get_json_list(variables_response.variables)
+        exprs = get_json_list(request.exprs)
+
+        user_input = random.choice(user_inputs)
+        raw = user_input.get("content", "")
+        new = raw
+
+        if len(exprs) > 0:
+            for expr in exprs:
+                for variable in variables:
+                    if variable["id"] == expr["variable_id"]:
+                        self.redis.hset(
+                            f"bot_story_nlp:{request.user_id}",
+                            variable["name"],
+                            expr["value"],
+                        )
+                        new = new.replace(f"${variable['name']}", expr["value"])
+
+        return bot_builder_nlp_pb2.GetUserInputResponse(new=new, raw=raw)
 
     def __del__(self):
         if self.luna_channel:

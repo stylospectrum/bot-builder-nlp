@@ -2,6 +2,8 @@ import re
 
 from Levenshtein import distance
 
+from ..proto.bot_builder_entity.bot_builder_entity_pb2 import Variable
+
 
 def is_alphanumeric(c):
     r = re.findall(r"[\u00C0-\u1FFF\u2C00-\uD7FF\w]", c)
@@ -56,10 +58,15 @@ def get_best_substring(text1: str, text2: str):
     return result
 
 
-def get_slots(utterance: str, entities: list):
+def get_slots(utterance: str, variables: list[Variable]):
     result = {}
 
-    for entity in entities:
+    for variable in variables:
+        entity = variable.get("entity", {})
+
+        if len(entity) == 0:
+            continue
+
         for option in entity["options"]:
             synonyms = option.get("synonyms", [])
             synonyms.append({"name": option["name"]})

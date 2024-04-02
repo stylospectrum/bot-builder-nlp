@@ -15,25 +15,30 @@ class BotBuilderNlpServiceStub(object):
             channel: A grpc.Channel.
         """
         self.LoadBotStory = channel.unary_unary(
-            "/bot_builder_nlp.service.BotBuilderNlpService/LoadBotStory",
-            request_serializer=bot__builder__nlp__pb2.LoadBotStoryRequest.SerializeToString,
-            response_deserializer=bot__builder__nlp__pb2.LoadBotStoryResponse.FromString,
-        )
+                '/bot_builder_nlp.service.BotBuilderNlpService/LoadBotStory',
+                request_serializer=bot__builder__nlp__pb2.LoadBotStoryRequest.SerializeToString,
+                response_deserializer=bot__builder__nlp__pb2.LoadBotStoryResponse.FromString,
+                )
         self.GetBotResponses = channel.unary_unary(
-            "/bot_builder_nlp.service.BotBuilderNlpService/GetBotResponses",
-            request_serializer=bot__builder__nlp__pb2.GetBotResponsesRequest.SerializeToString,
-            response_deserializer=bot__builder__nlp__pb2.GetBotResponsesResponse.FromString,
-        )
+                '/bot_builder_nlp.service.BotBuilderNlpService/GetBotResponses',
+                request_serializer=bot__builder__nlp__pb2.GetBotResponsesRequest.SerializeToString,
+                response_deserializer=bot__builder__nlp__pb2.GetBotResponsesResponse.FromString,
+                )
         self.UpsertEmbedding = channel.unary_unary(
-            "/bot_builder_nlp.service.BotBuilderNlpService/UpsertEmbedding",
-            request_serializer=bot__builder__nlp__pb2.UpsertEmbeddingRequest.SerializeToString,
-            response_deserializer=bot__builder__nlp__pb2.UpsertEmbeddingResponse.FromString,
-        )
+                '/bot_builder_nlp.service.BotBuilderNlpService/UpsertEmbedding',
+                request_serializer=bot__builder__nlp__pb2.UpsertEmbeddingRequest.SerializeToString,
+                response_deserializer=bot__builder__nlp__pb2.UpsertEmbeddingResponse.FromString,
+                )
         self.DeleteEmbedding = channel.unary_unary(
-            "/bot_builder_nlp.service.BotBuilderNlpService/DeleteEmbedding",
-            request_serializer=bot__builder__nlp__pb2.DeleteEmbeddingRequest.SerializeToString,
-            response_deserializer=bot__builder__nlp__pb2.DeleteEmbeddingResponse.FromString,
-        )
+                '/bot_builder_nlp.service.BotBuilderNlpService/DeleteEmbedding',
+                request_serializer=bot__builder__nlp__pb2.DeleteEmbeddingRequest.SerializeToString,
+                response_deserializer=bot__builder__nlp__pb2.DeleteEmbeddingResponse.FromString,
+                )
+        self.GetUserInput = channel.unary_unary(
+                '/bot_builder_nlp.service.BotBuilderNlpService/GetUserInput',
+                request_serializer=bot__builder__nlp__pb2.GetUserInputRequest.SerializeToString,
+                response_deserializer=bot__builder__nlp__pb2.GetUserInputResponse.FromString,
+                )
 
 
 class BotBuilderNlpServiceServicer(object):
@@ -42,173 +47,152 @@ class BotBuilderNlpServiceServicer(object):
     def LoadBotStory(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetBotResponses(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def UpsertEmbedding(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def DeleteEmbedding(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetUserInput(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_BotBuilderNlpServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-        "LoadBotStory": grpc.unary_unary_rpc_method_handler(
-            servicer.LoadBotStory,
-            request_deserializer=bot__builder__nlp__pb2.LoadBotStoryRequest.FromString,
-            response_serializer=bot__builder__nlp__pb2.LoadBotStoryResponse.SerializeToString,
-        ),
-        "GetBotResponses": grpc.unary_unary_rpc_method_handler(
-            servicer.GetBotResponses,
-            request_deserializer=bot__builder__nlp__pb2.GetBotResponsesRequest.FromString,
-            response_serializer=bot__builder__nlp__pb2.GetBotResponsesResponse.SerializeToString,
-        ),
-        "UpsertEmbedding": grpc.unary_unary_rpc_method_handler(
-            servicer.UpsertEmbedding,
-            request_deserializer=bot__builder__nlp__pb2.UpsertEmbeddingRequest.FromString,
-            response_serializer=bot__builder__nlp__pb2.UpsertEmbeddingResponse.SerializeToString,
-        ),
-        "DeleteEmbedding": grpc.unary_unary_rpc_method_handler(
-            servicer.DeleteEmbedding,
-            request_deserializer=bot__builder__nlp__pb2.DeleteEmbeddingRequest.FromString,
-            response_serializer=bot__builder__nlp__pb2.DeleteEmbeddingResponse.SerializeToString,
-        ),
+            'LoadBotStory': grpc.unary_unary_rpc_method_handler(
+                    servicer.LoadBotStory,
+                    request_deserializer=bot__builder__nlp__pb2.LoadBotStoryRequest.FromString,
+                    response_serializer=bot__builder__nlp__pb2.LoadBotStoryResponse.SerializeToString,
+            ),
+            'GetBotResponses': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetBotResponses,
+                    request_deserializer=bot__builder__nlp__pb2.GetBotResponsesRequest.FromString,
+                    response_serializer=bot__builder__nlp__pb2.GetBotResponsesResponse.SerializeToString,
+            ),
+            'UpsertEmbedding': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpsertEmbedding,
+                    request_deserializer=bot__builder__nlp__pb2.UpsertEmbeddingRequest.FromString,
+                    response_serializer=bot__builder__nlp__pb2.UpsertEmbeddingResponse.SerializeToString,
+            ),
+            'DeleteEmbedding': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteEmbedding,
+                    request_deserializer=bot__builder__nlp__pb2.DeleteEmbeddingRequest.FromString,
+                    response_serializer=bot__builder__nlp__pb2.DeleteEmbeddingResponse.SerializeToString,
+            ),
+            'GetUserInput': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetUserInput,
+                    request_deserializer=bot__builder__nlp__pb2.GetUserInputRequest.FromString,
+                    response_serializer=bot__builder__nlp__pb2.GetUserInputResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-        "bot_builder_nlp.service.BotBuilderNlpService", rpc_method_handlers
-    )
+            'bot_builder_nlp.service.BotBuilderNlpService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
-# This class is part of an EXPERIMENTAL API.
+ # This class is part of an EXPERIMENTAL API.
 class BotBuilderNlpService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def LoadBotStory(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
+    def LoadBotStory(request,
             target,
-            "/bot_builder_nlp.service.BotBuilderNlpService/LoadBotStory",
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/bot_builder_nlp.service.BotBuilderNlpService/LoadBotStory',
             bot__builder__nlp__pb2.LoadBotStoryRequest.SerializeToString,
             bot__builder__nlp__pb2.LoadBotStoryResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-        )
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetBotResponses(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
+    def GetBotResponses(request,
             target,
-            "/bot_builder_nlp.service.BotBuilderNlpService/GetBotResponses",
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/bot_builder_nlp.service.BotBuilderNlpService/GetBotResponses',
             bot__builder__nlp__pb2.GetBotResponsesRequest.SerializeToString,
             bot__builder__nlp__pb2.GetBotResponsesResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-        )
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def UpsertEmbedding(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
+    def UpsertEmbedding(request,
             target,
-            "/bot_builder_nlp.service.BotBuilderNlpService/UpsertEmbedding",
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/bot_builder_nlp.service.BotBuilderNlpService/UpsertEmbedding',
             bot__builder__nlp__pb2.UpsertEmbeddingRequest.SerializeToString,
             bot__builder__nlp__pb2.UpsertEmbeddingResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-        )
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def DeleteEmbedding(
-        request,
-        target,
-        options=(),
-        channel_credentials=None,
-        call_credentials=None,
-        insecure=False,
-        compression=None,
-        wait_for_ready=None,
-        timeout=None,
-        metadata=None,
-    ):
-        return grpc.experimental.unary_unary(
-            request,
+    def DeleteEmbedding(request,
             target,
-            "/bot_builder_nlp.service.BotBuilderNlpService/DeleteEmbedding",
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/bot_builder_nlp.service.BotBuilderNlpService/DeleteEmbedding',
             bot__builder__nlp__pb2.DeleteEmbeddingRequest.SerializeToString,
             bot__builder__nlp__pb2.DeleteEmbeddingResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-        )
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetUserInput(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/bot_builder_nlp.service.BotBuilderNlpService/GetUserInput',
+            bot__builder__nlp__pb2.GetUserInputRequest.SerializeToString,
+            bot__builder__nlp__pb2.GetUserInputResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
