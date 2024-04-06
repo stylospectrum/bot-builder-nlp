@@ -9,7 +9,7 @@ def evaluate_expression(expression, data: dict, variables: list):
             if evaluate_expression(sub_expression, data, variables):
                 return True
         return False
-    elif expression["operator"] == "Equal":
+    elif expression["operator"] in ["Equal", "NotEqual"]:
         variable = next(
             (
                 variable
@@ -18,9 +18,11 @@ def evaluate_expression(expression, data: dict, variables: list):
             ),
             None,
         )
-
         if variable and variable["name"] in data:
-            return data[variable["name"]] == expression["value"]
+            if expression["operator"] == "Equal":
+                return data[variable["name"]] == expression.get('value')
+            elif expression["operator"] == "NotEqual":
+                return data[variable["name"]] != expression.get('value')
 
         return False
     else:
