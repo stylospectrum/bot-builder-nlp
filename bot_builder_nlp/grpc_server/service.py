@@ -102,14 +102,16 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
             },
         )
         user_input_block_id = ""
+        user_input_id = ""
 
         for hits in search_result:
             for hit in hits:
                 if hit.distance > 0.5:
                     user_input_block_id = hit.entity.get("story_block_id")
+                    user_input_id = hit.entity.get("id")
                     break
 
-        return user_input_block_id, user_intent
+        return user_input_block_id, user_input_id, user_intent
 
     def rephrase(self, text: str) -> str:
         should_rephrase = random.choice([True, False])
@@ -139,6 +141,75 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
 
         return [text]
 
+    def get_user_inputs(self, story_block_id: str):
+        user_inputs_response: bot_builder_story_pb2.GetUserInputsResponse = (
+            self.bot_builder_story_stub.GetUserInputs(
+                bot_builder_story_pb2.GetUserInputsRequest(
+                    story_block_id=story_block_id
+                )
+            )
+        )
+        return get_json_list(user_inputs_response.inputs)
+
+    def get_variables(self, user_id: str):
+        variables_response: bot_builder_entity_pb2.GetVariablesResponse = (
+            self.bot_builder_entity_stub.GetVariables(
+                bot_builder_entity_pb2.GetVariablesRequest(user_id=user_id)
+            )
+        )
+        return get_json_list(variables_response.variables)
+
+    def get_bot_responses(self, story_block_id: str):
+        bot_responses_response: bot_builder_story_pb2.GetBotResponsesResponse = (
+            self.bot_builder_story_stub.GetBotResponses(
+                bot_builder_story_pb2.GetBotResponsesRequest(
+                    story_block_id=story_block_id
+                )
+            )
+        )
+        return get_json_list(bot_responses_response.responses)
+
+    def get_user_input_by_id(self, id: str, story_block_id: str):
+        user_inputs = self.get_user_inputs(story_block_id)
+        user_input = next(
+            (user_input for user_input in user_inputs if user_input.get("id") == id),
+            None,
+        )
+
+        if user_input:
+            return user_input.get("content", "")
+
+        return ""
+
+    def get_luna_slots(self, text: str):
+        slots = self.luna_stub.Call(
+            bentoml_service_pb2.Request(
+                api_name="classify",
+                json=_struct_pb2.Value(
+                    struct_value=_struct_pb2.Struct(
+                        fields={
+                            "text": _struct_pb2.Value(string_value=text),
+                            "type": _struct_pb2.Value(string_value="slot"),
+                        }
+                    )
+                ),
+            )
+        )
+
+        slots = json.loads(MessageToJson(slots, preserving_proto_field_name=True))
+        return slots["json"]
+
+    def get_filters(self, story_block_ids: list[str]):
+        filters_response: bot_builder_story_pb2.GetFiltersResponse = (
+            self.bot_builder_story_stub.GetFilters(
+                bot_builder_story_pb2.GetFiltersRequest(story_block_ids=story_block_ids)
+            )
+        )
+        return [
+            json.loads(MessageToJson(block, preserving_proto_field_name=True))
+            for block in filters_response.filters
+        ]
+
     def LoadBotStory(self, request, context):
         self.redis.delete(f"bot_story_nlp:{request.user_id}")
 
@@ -157,14 +228,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
             "current_bot_response_block",
             json.dumps(welcome_msg_block),
         )
-        bot_responses_response: bot_builder_story_pb2.GetBotResponsesResponse = (
-            self.bot_builder_story_stub.GetBotResponses(
-                bot_builder_story_pb2.GetBotResponsesRequest(
-                    story_block_id=welcome_msg_block.get("id")
-                )
-            )
-        )
-        bot_responses = get_json_list(bot_responses_response.responses)
+        bot_responses = self.get_bot_responses(welcome_msg_block.get("id"))
 
         result = []
 
@@ -248,44 +312,50 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         user_input_block = None
         should_save_user_input_block_id = False
         should_reset_chat = False
+        is_save_suggested_gallery = False
+        user_input_block_id = ""
+        user_input_id = ""
+        user_intent = ""
+        user_input_raw = ""
+        luna_slots = {}
+        variables = self.get_variables(request.user_id)
+
         prev_user_input_block_id = self.redis.hget(
             f"bot_story_nlp:{request.user_id}",
             "prev_user_input_block_id",
         )
-        user_input_block_id = None
-        user_intent = ''
-
-        if prev_user_input_block_id:
-            user_input_block_id = prev_user_input_block_id
-        else:
-            user_input_block_id, user_intent = self.get_user_input_block_id(
-                request.user_input, request.user_id
-            )
-
-        variables_response: bot_builder_entity_pb2.GetVariablesResponse = (
-            self.bot_builder_entity_stub.GetVariables(
-                bot_builder_entity_pb2.GetVariablesRequest(user_id=request.user_id)
-            )
-        )
-        variables = get_json_list(variables_response.variables)
-        
-        if user_intent not in ["ask", "add_to_cart", '']:
-            self.redis.hdel(
-                f"bot_story_nlp:{request.user_id}",
-                "suggested_gallery",
-            )
 
         suggested_gallery = self.redis.hget(
             f"bot_story_nlp:{request.user_id}",
             "suggested_gallery",
         )
 
+        if prev_user_input_block_id:
+            user_input_block_id = prev_user_input_block_id
+        else:
+            user_input_block_id, user_input_id, user_intent = (
+                self.get_user_input_block_id(request.user_input, request.user_id)
+            )
+
+        if user_input_id and user_input_block_id:
+            user_input_raw = self.get_user_input_by_id(
+                user_input_id, user_input_block_id
+            )
+
+        if user_intent not in ["ask", "add_to_cart", ""]:
+            self.redis.hdel(
+                f"bot_story_nlp:{request.user_id}",
+                "suggested_gallery",
+            )
+
         if suggested_gallery:
             suggested_gallery = json.loads(suggested_gallery)
+            is_save_suggested_gallery = True
         else:
             suggested_gallery = []
+            is_save_suggested_gallery = False
 
-        if request.is_button_click or len(suggested_gallery) > 0:
+        if request.is_button_click or is_save_suggested_gallery:
             bot_story = self.redis.hget(
                 f"bot_story_nlp:{request.user_id}",
                 "bot_story",
@@ -307,7 +377,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                 None,
             )
 
-        if len(suggested_gallery) > 0 and request.user_input:
+        if is_save_suggested_gallery and "$" in user_input_raw:
             entities = {}
             exprs = [
                 expr
@@ -341,28 +411,11 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         if user_input_block:
             child_type = user_input_block.get("children")[0]["type"]
 
+            if child_type == "Filter" or is_save_suggested_gallery:
+                luna_slots = self.get_luna_slots(request.user_input)
+
             if child_type == "Filter":
                 slots = get_slots(request.user_input, variables)
-                luna_slots = self.luna_stub.Call(
-                    bentoml_service_pb2.Request(
-                        api_name="classify",
-                        json=_struct_pb2.Value(
-                            struct_value=_struct_pb2.Struct(
-                                fields={
-                                    "text": _struct_pb2.Value(
-                                        string_value=request.user_input
-                                    ),
-                                    "type": _struct_pb2.Value(string_value="slot"),
-                                }
-                            )
-                        ),
-                    )
-                )
-
-                luna_slots = json.loads(
-                    MessageToJson(luna_slots, preserving_proto_field_name=True)
-                )
-                luna_slots = luna_slots["json"]
 
                 for slot in luna_slots.items():
                     slots[slot[0]] = slot[1]
@@ -379,17 +432,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                     filter_block.get("id")
                     for filter_block in user_input_block.get("children")
                 ]
-                filters_response: bot_builder_story_pb2.GetFiltersResponse = (
-                    self.bot_builder_story_stub.GetFilters(
-                        bot_builder_story_pb2.GetFiltersRequest(
-                            story_block_ids=filter_block_ids
-                        )
-                    )
-                )
-                filters = [
-                    json.loads(MessageToJson(block, preserving_proto_field_name=True))
-                    for block in filters_response.filters
-                ]
+                filters = self.get_filters(filter_block_ids)
 
                 for filter in filters:
                     if evaluate_expression(filter, slots, variables):
@@ -406,7 +449,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                         "prev_user_input_block_id",
                     )
 
-                    if next_bot_response_block.get('children'):
+                    if next_bot_response_block.get("children"):
                         self.redis.hset(
                             f"bot_story_nlp:{request.user_id}",
                             "current_bot_response_block",
@@ -428,13 +471,13 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                     if fallback_block:
                         next_bot_response_block = fallback_block.get("children")[0]
 
-                        if len(suggested_gallery) > 0:
+                        if is_save_suggested_gallery:
                             should_save_user_input_block_id = True
 
             elif child_type == "BotResponse":
                 next_bot_response_block = user_input_block.get("children")[0]
 
-                if next_bot_response_block.get('children'):
+                if next_bot_response_block.get("children"):
                     self.redis.hset(
                         f"bot_story_nlp:{request.user_id}",
                         "current_bot_response_block",
@@ -443,7 +486,11 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                 else:
                     should_reset_chat = True
 
-        if next_bot_response_block is None or should_reset_chat:
+        if (
+            user_input_block is None
+            or next_bot_response_block is None
+            or should_reset_chat
+        ):
             bot_story = self.redis.hget(
                 f"bot_story_nlp:{request.user_id}",
                 "bot_story",
@@ -451,7 +498,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
             bot_story = json.loads(json.loads(bot_story))
             welcome_msg_block = bot_story.get("children")[0]
 
-            if next_bot_response_block is None:
+            if next_bot_response_block is None or user_input_block is None:
                 default_fallback_block = bot_story.get("children")[1]
                 next_bot_response_block = default_fallback_block.get("children")[0]
 
@@ -461,15 +508,7 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
                 json.dumps(welcome_msg_block),
             )
 
-        bot_responses_response: bot_builder_story_pb2.GetBotResponsesResponse = (
-            self.bot_builder_story_stub.GetBotResponses(
-                bot_builder_story_pb2.GetBotResponsesRequest(
-                    story_block_id=next_bot_response_block.get("id")
-                )
-            )
-        )
-
-        bot_responses = get_json_list(bot_responses_response.responses)
+        bot_responses = self.get_bot_responses(next_bot_response_block.get("id"))
         result = []
 
         for response in bot_responses:
@@ -520,40 +559,28 @@ class BotBuilderNlpServicer(bot_builder_nlp_pb2_grpc.BotBuilderNlpServiceService
         return bot_builder_nlp_pb2.LoadBotStoryResponse(responses=result)
 
     def GetUserInput(self, request, context):
-        user_inputs_response: bot_builder_story_pb2.GetUserInputsResponse = (
-            self.bot_builder_story_stub.GetUserInputs(
-                bot_builder_story_pb2.GetUserInputsRequest(
-                    story_block_id=request.story_block_id
-                )
-            )
-        )
-
-        variables_response: bot_builder_entity_pb2.GetVariablesResponse = (
-            self.bot_builder_entity_stub.GetVariables(
-                bot_builder_entity_pb2.GetVariablesRequest(user_id=request.user_id)
-            )
-        )
-
-        user_inputs = get_json_list(user_inputs_response.inputs)
-        variables = get_json_list(variables_response.variables)
+        variables = self.get_variables(request.user_id)
+        user_inputs = self.get_user_inputs(request.story_block_id)
         exprs = get_json_list(request.exprs)
-
-        user_input = random.choice(user_inputs)
+        user_input = random.choice(self.get_user_inputs(user_inputs))
         raw = user_input.get("content", "")
         new = raw
 
         if len(exprs) > 0:
             for expr in exprs:
-                for variable in variables:
-                    if variable["id"] == expr["variable_id"]:
-                        self.redis.hset(
-                            f"bot_story_nlp:{request.user_id}",
-                            variable["name"],
-                            expr["value"],
-                        )
+                variable = next(
+                    (var for var in variables if var["id"] == expr["variable_id"]), None
+                )
 
-                        if variable["name"] and expr["value"]:
-                            new = new.replace(f"${variable['name']}", expr["value"])
+                if variable:
+                    self.redis.hset(
+                        f"bot_story_nlp:{request.user_id}",
+                        variable["name"],
+                        expr["value"],
+                    )
+
+                    if variable["name"] and expr["value"]:
+                        new = new.replace(f"${variable['name']}", expr["value"])
 
         return bot_builder_nlp_pb2.GetUserInputResponse(new=new, raw=raw)
 
